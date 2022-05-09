@@ -1,0 +1,43 @@
+package com.vt00185.slimimplement.Packet;
+
+import com.vt00185.slimimplement.netw.packet_input_stream;
+import com.vt00185.slimimplement.netw.packet_output_stream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+public class defaultpack extends Packet {
+
+    public String n;
+    public String msg;
+
+    public defaultpack() {
+        super (0x0);
+    }
+
+     public defaultpack(String n, String msg) {
+        super(0x0);
+        this.n = n;
+        this.msg = msg;
+    }
+    
+    @Override
+    public void writedata(packet_output_stream o) throws IOException {
+        o.writestring(n);
+        o.writestring(msg);
+    }
+
+    public int getpackId() {
+        return 0;
+    }
+
+    @Override
+    public void readdata(packet_input_stream i) throws IOException {
+        n = i.readstring();
+        msg = i.readstring();
+    }
+    
+     @Override
+    public String toString() {
+        return super.toString() + String.format("Name: %s%n", n) + String.format("Message: %s%n", msg);
+    }
+}

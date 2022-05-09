@@ -1,0 +1,31 @@
+package com.vt00185.slimimplement.Packet;
+
+import com.vt00185.slimimplement.Packet.packet_output_stream;
+import com.vt00185.slimimplement.Packet.packet_input_stream;
+import java.io.IOException;
+public abstract class packet{
+    private final int id;
+    private byte[] snowflake;
+    public packet(int id){
+        this.id=id;
+    }
+    public int getpacketID(){
+        return id;
+    }
+
+    public byte[] getsnowflake(){
+        return snowflake;
+    }
+    public void setsnowflake(byte[] snowflake){
+        this.snowflake = snowflake;
+    }
+
+    public abstract void writedata(packet_output_stream o)throws IOException;
+    public abstract void readdata(packet_input_stream i)throws IOException;
+
+    public String toString(){
+        return "-- Packet: #"+ id +"\n";
+    }
+
+
+}

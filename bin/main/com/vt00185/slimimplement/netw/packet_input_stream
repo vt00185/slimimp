@@ -1,0 +1,167 @@
+package com.vt00185.slimimplement.netw;
+
+import com.vt00185.slimimplement.Data.VarLengthNumbers;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import static com.vt00185.slimimplement.Packet.datatypeID.*;
+
+public class packet_input_stream{
+    private DataInputStream str;
+    public packet_input_stream(InputStream inp){
+        this(new DataInputStream(inp));
+    }
+
+    public packet_input_stream(DataInputStream str){
+        this.str = str;
+    }
+
+    public int readbyte() throws IOException {
+        if(str.read() != BYTE) exception("Byte", BYTE);
+        return str.readUnsignedByte();
+    }
+
+    public boolean readboolean() throws IOException {
+        if(str.read() != BOOLEAN) exception("Boolean", BOOLEAN);
+        return str.readByte()==1;
+    }
+  
+     public int readshort() throws IOException {
+        if(str.read() != SHORT) exception("Short", SHORT);
+        return str.readUnsignedShort();
+    }
+
+     public short readsignedshort() throws IOException {
+        if(str.read() != SIGNED_SHORT) exception("Signed Short", SIGNED_SHORT);
+        return str.readShort();
+    }
+
+    public byte readsignedbyte() throws IOException {
+        if(str.read() != SIGNED_BYTE) exception("SignedByte", SIGNED_BYTE);
+        return str.readByte();
+    }
+
+     public int readint() throws IOException {
+        if(str.read() != INT) exception("Int", INT);
+        return str.readInt();
+    }
+
+
+    public long readlong() throws IOException {
+        if(str.read() != LONG) exception("Long", LONG);
+        return str.readLong();
+    }
+
+    public long readsignedlong() throws IOException {
+        if(str.read() != SIGNED_LONG) exception("Signed_Long", SIGNED_LONG);
+        return str.readLong();
+    }
+
+    public int readvarint() throws IOException {
+        if(str.read() != VAR_INT) throw new RuntimeException("Invalid DataType: Expected VarInt-0x08");
+        return VarLengthNumbers.readvarInt(str::readByte);
+    }
+
+    public int readsignedint() throws IOException {
+        if(str.read() != SIGNED_INT) exception("Signed Int", SIGNED_INT);
+        return str.readInt();
+    }
+
+    public float readfloat() throws IOException {
+        if(str.read() != FLOAT) exception("Float", FLOAT);
+        return str.readFloat();
+    }
+
+    public double readdouble() throws IOException {
+        if(str.read() != DOUBLE) exception("Double", DOUBLE);
+        return str.readDouble();
+    }
+
+
+     public long readvarlong() throws IOException {
+        if(str.read() != VAR_LONG) throw new RuntimeException("Invalid DataType: Expected VarLong-0x09");
+        return VarLengthNumbers.readvarLong(str::readByte);
+    }
+
+     public String readstring() throws IOException {
+        if(str.read() != STRING){
+            exception("String", STRING);
+        }
+        int len = VarLengthNumbers.readvarInt(str::readByte);
+
+        byte[] d = new byte[len];
+        int rd= str.read(d);
+
+        if(len != 0 && rd != len) throw new IOException("Invalid Input Size");
+        return new String(d, StandardCharsets.UTF_8);
+    }
+
+    public byte[] readbytes() throws IOException {
+        if(str.read() != BYTES) exception("Bytes", BYTES);
+        int len = VarLengthNumbers.readvarInt(str::readByte);
+        byte[] d = new byte[len];
+        int rd = str.read(d);
+        if(len !=0 && rd != len) throw new IOException("Invalid Input Size");
+        return d;
+    }
+
+    public short[] readshortarr() throws IOException {
+        if(str.read() != ARRAY) exception("Array", ARRAY);
+        if(str.read() != SHORT) exception("Short_Array", SHORT);
+        int len = VarLengthNumbers.readvarInt(str::readByte);
+        short[] d = new short[len];
+        for(int i = 0; i < len; i++){
+            d[i] = str.readShort();
+        }
+        return d;
+    }
+
+    public int[] readintarr() throws IOException {
+        if(str.read() != ARRAY) exception("Array", ARRAY);
+        if(str.read() != INT) exception("Int_Array", INT);
+        int len = VarLengthNumbers.readvarInt(str::readByte);
+        int[] d = new int[len];
+        for(int i = 0; i < len; i++){
+            d[i] = str.readInt();
+        }
+        return d;
+    }
+
+    public float[] readfloatarr() throws IOException {
+        if(str.read() != ARRAY) exception("Array", ARRAY);
+        if(str.read() != FLOAT) exception("Float_Array", Float);
+        int len = VarLengthNumbers.readvarInt(str::readByte);
+        float[] d = new float[len];
+        for(int i = 0; i < len; i++){
+            d[i] = str.readFloat();
+        }
+        return d;
+    }
+
+    public long[] readlongarr() throws IOException {
+        if(str.read() != ARRAY) exception("Array", ARRAY);
+        if(str.read() != SHORT) exception("Long_Array", LONG);
+        int len = VarLengthNumbers.readvarInt(str::readByte);
+        long[] d = new long[len];
+        for(int i = 0; i < len; i++){
+            d[i] = str.readLong();
+        }
+        return d;
+    }
+
+    public double[] readdoublearr() throws IOException {
+        if(str.read() != ARRAY) exception("Array", ARRAY);
+        if(str.read() != DOUBLE) exception("Double_Array", DOUBLE);
+        int len = VarLengthNumbers.readvarInt(str::readByte);
+        double[] d = new double[len];
+        for(int i = 0; i < len; i++){
+            d[i] = str.readDouble();
+        }
+        return d;
+    }
+
+    private void exception(String n, int id) throws IOException {
+        throw new RuntimeException("Invalid DataType: Expected " + n + "-" + id);
+    }
+}

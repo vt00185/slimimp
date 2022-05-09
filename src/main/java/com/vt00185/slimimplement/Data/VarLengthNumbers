@@ -1,0 +1,58 @@
+package com.vt00185.slimimplement.Data;
+import com.vt00185.slimimplement.Interface.readerInterface;
+import com.vt00185.slimimplement.Interface.writerInterface;
+import java.io.IOException;
+
+public class VarLengthNumbers{
+    private static final byte cont_bit= -128;
+    private static final byte seg_bit= ~cont_bit;
+
+    public static void writevarInt(writerInterface w, int val) throws IOException {
+        do {
+            w.wbyte((byte)((val & seg_bit)| ((val & ~seg_bit)!=0 ? cont_bit: 0)));
+            val >>>= 7;
+        }while (val != 0);
+    }
+
+
+    public static int readvarInt(readerInterface r) throws IOException{
+        byte index =0;
+        int cbyte;
+        int val=0;
+        do{
+            cbyte=r.rbyte();
+            val |= (cbyte & seg_bit) << (index * 7);
+            index++;
+            if(index == 5 && (cbyte & 0b1111_0000)!=0){
+                throw new RuntimeException("Invalid Var");
+            }
+            
+        }while ((cbyte & cont_bit)!=0);
+        
+        return val;
+    }
+
+    public static void writevarLong(writerInterface w, long val) throws IOException {
+        do {
+            w.wbyte((byte)((val & seg_bit)| ((val & ~seg_bit)!=0 ? cont_bit: 0)));
+            val >>>= 7;
+        }while (val != 0);
+    }
+
+    public static readvarLong(readerInterface r) throwsIOExcpetion{
+        byte index =0;
+        int cbyte;
+        int val=0;
+        do{
+            cbyte=r.rbyte();
+            val |= (long)(cbyte & seg_bit) << (index * 7);
+            index++;
+            if(index == 10 && (cbyte & 0b1111_1110)!=0){
+                throw new RuntimeException("Invalid Var");
+            }
+            
+        }while ((cbyte & cont_bit)!=0);
+        
+        return val;
+    }
+}

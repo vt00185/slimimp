@@ -1,0 +1,107 @@
+package com.vt00185.slimimplement.netw;
+
+import com.vt00185.slimimplement.Packet.datatypeID;
+import com.vt00185.slimimplement.Packet.magic;
+import com.vt00185.slimimplement.Packet.packet;
+import com.vt00185.slimimplement.Data.UUIDUTIL;
+import com.vt00185.slimimplement.Data.VarLengthNumbers;
+import net.openhft.hashing.LongHashFunction;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketTimeoutException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.UUID;
+
+public class packsend{
+    public static void sendpack(packet pack, DatagramSocket sock, InetAddress ad, int port)throws IOException{
+        if(pack.getsnowflake()==null)
+        pack.setsnowflake(UUIDUTIL.AS_BYTES(UUID.randomUUID()));
+        byte[] packetbyte=getpacketbyte(pack);
+        int buffsize=1024;
+        int maxlen= 980;
+        ByteBuffer sendbuffer = ByteBuffer.allocate(buffsize);
+        byte[] hash = new byte[8];
+        var hash1 = LongHashFunction.xx3();
+        int index = 0;
+        int bindex = 0;
+        int cnt= (int)Math.ceil(packetbyte.length/ (float) maxlen);
+        while(bindex < packetbyte.length){
+            sendbuffer.rewind(); //buffer reset
+            int payloadlen = Math.min(packetbyte.length-bindex, maxlen); //size of body
+            sendbuffer.put(datatypeID.MAGIC); //assemble magic
+            sendbuffer.putInt(magic.CHUNK); 
+            sendbuffer.put(datatypeID.SHORT); //Length of packet
+            sendbuffer.putShort((short) payloadlen);
+            sendbuffer.put(datatypeID.FIXED_BYTES); //Snowflake of the packet
+            sendbuffer.put(pack.getsnowflake());
+            sendbuffer.put(datatypeID.FIXED_BYTES);
+            sendbuffer.putLong(hash1.hashBytes(packetbyte, bindex, payloadlen)); //Hash
+            sendbuffer.put(datatypeID.INT);
+            sendbuffer.putInt(index); //index number of the packet
+            sendbuffer.put(datatypeID.INT);
+            sendbuffer.putInt(cnt);  
+            sendbuffer.put(packetbyte, bindex, payloadlen);
+            sendbuffer.flip();
+            DatagramPacket packettosend = new DatagramPacket(sendbuffer.array(),0,sendbuffer.remaining(),ad,port);
+            sock.send(packettosend);
+            bindex +=payloadlen; //increment for next chunk
+            index++;
+
+        }
+    }
+
+    public static byte[] getpacketbyte(packet pack)throws IOException{
+        ByteArrayOutputStream packbodydata = new ByteArrayOutputStream(); //Header and body into a array
+        DataOutputStream packdataop= new DataOutputStream(packbodydata);
+        packdataop.write(datatypeID.FIXED_BYTES); //Snowflake
+        packdataop.write(pack.getsnowflake());
+        packdataop.write(datatypeID.VAR_INT);
+        VarLengthNumbers.writevarInt(packdataop::writeByte, pack.getpacketID());
+        pack.writedata(new packet_output_stream(packdataop));
+        packdataop.close();
+        packbodydata.close();
+        byte[] headandbody = packbodydata.toByteArray();
+        ByteArrayOutputStream packdata= new ByteArrayOutputStream();
+        packdataop = new DataOutputStream(packdata);
+        packdataop.write(datatypeID.MAGIC);
+        packdataop.writeInt(magic.PACKET);
+        packdataop.write(datatypeID.VAR_INT);
+        VarLengthNumbers.writevarInt(packdataop::writeByte, headandbody.length);
+        packdataop.write(headandbody);
+        packdataop.close();
+        packdata.close();
+        return packdata.toByteArray(); //return bytes
+    }
+
+    private static boolean recack(DatagramSocket sock, byte[] recbuffdata, byte[] snowflake, byte[] hash, int index)throws IOException{
+        DatagramPacket incompacket = new DatagramPacket(recbuffdata, recbuffdata.length);
+        try{
+            sock.receive(incompacket);
+        }catch(SocketTimeoutException e){
+            return false;
+        }
+        byte[] d = incompacket.getData();
+
+        for(int i=0, i<16, i++){
+            if(d[i]!=snowflake[i]){
+                return false;
+            }
+        }
+        for(int i = 0; i < 8; i++){
+            if(d[i+16]!=hash[i]){
+                return false;
+            } 
+        }
+        boolean m=true;
+        int chck = ByteBuffer.wrap(recbuffdata, 24, 4).getInt();
+        if(chck != index){
+            m=false;
+        }
+        return m;
+    }
+}

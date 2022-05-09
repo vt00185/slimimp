@@ -1,0 +1,28 @@
+package com.vt00185.slimimplement;
+import com.vt00185.slimimplement.netw.packrec;
+import java.io.IOException;
+import java.net.DatagramSocket;
+import java.net.SocketException;
+public class Server{
+    DatagramSocket serversock;
+    public static void main(String[] args){
+        Server serv= new Server();
+        serv.start();
+    }
+
+    public void start(){
+        if(serversock != null){
+            return;
+        }
+        try{
+            serversock=new DatagramSocket(SLIM.PORT);
+            System.out.println("Listening port"+SLIM.PORT);
+            System.out.println("Received packet:"+packrec.receivech(serversock));
+        }catch(SocketException e){
+            System.err.println("Server failed. Port may be taken.");
+            e.printStackTrace();
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+    }
+}

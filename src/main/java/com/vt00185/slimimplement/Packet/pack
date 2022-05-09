@@ -1,0 +1,11 @@
+package com.vt00185.slimimplement.Packet;
+
+public class pack{
+    public static pack getPacket(int id) {
+        switch (id) {
+            case 0: return new defaultpacket();
+        }
+
+        return null;
+    }
+}

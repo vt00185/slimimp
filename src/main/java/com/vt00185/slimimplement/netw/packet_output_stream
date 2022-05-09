@@ -1,0 +1,147 @@
+package com.vt00185.slimimplement.netw;
+
+import com.vt00185.slimimplement.Data.VarLengthNumbers;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import static com.vt00185.slimimplement.Packet.datatypeID.*;
+
+public class packet_output_stream{
+    private final DataOutputStream str;
+    public packet_output_stream(DataOutputStream str){
+        this.str=str;
+    }
+
+    public void writenull() throws IOException{
+        str.writeByte(NULL);
+    }
+
+    public void writeboolean(boolean boo) throws IOException{
+        str.writeByte(BOOLEAN);
+        str.writeByte(boo ? 1 : 0);
+    }
+
+    public void writevarint(int val)throws IOException{
+        str.writeByte(VAR_INT);
+        VarLengthNumbers.writevarInt(str::write, val);
+    }
+
+    public void writebyte(byte val, boolean sig) throws IOException{
+        if(!sig){
+            str.writeByte(BYTE);
+            str.writeByte(val);
+        }else{
+            str.writeByte(SIGNED_BYTE);
+            str.writeByte(~val)
+        }
+    }
+
+
+    public void writeint(int val, boolean sig) throws IOException{
+        if(!sig){
+            str.writeByte(INT);
+            str.writeByte(val);
+        }else{
+            str.writeByte(SIGNED_INT);
+            str.writeByte(~val)
+        }
+    }
+
+    public void writelong(long val, boolean sig) throws IOException{
+        if(!sig){
+            str.writeByte(LONG);
+            str.writeByte(val);
+        }else{
+            str.writeByte(SIGNED_LONG);
+            str.writeByte(~val)
+        }
+    }
+
+    public void writeshort(short val, boolean sig) throws IOException{
+        if(!sig){
+            str.writeByte(SHORT);
+            str.writeByte(val);
+        }else{
+            str.writeByte(SIGNED_SHORT);
+            str.writeByte(~val)
+        }
+    }
+
+    public void writefloat(float val) throws IOException {
+        str.writeByte(FLOAT);
+        str.writeFloat(val);
+    }
+
+    public void writeDouble(double value) throws IOException {
+        str.writeByte(DOUBLE);
+        str.writeDouble(val);
+    }
+
+
+    public void writevarlong(long val) throws IOException {
+        str.writeByte(VAR_LONG);
+        VarLengthNumbers.writevarLong(str::writeByte, val);
+    }
+
+    public void writestring(String val) throws IOException {
+        str.writeByte(STRING);
+        byte[] bytes = val.getBytes(StandardCharsets.UTF_8);
+        VarLengthNumbers.writevarInt(str::writeByte, bytes.length);
+        str.write(bytes);
+    }
+
+    public void writebytes(byte[] val)throws IOException{
+        str.writeBytes(BYTES);
+        VarLengthNumbers.writevarInt(str::writeByte, val.length);
+        str.write(val);
+    }
+
+    public void writearray(short[] val) throws IOException {
+        str.writeByte(ARRAY);
+        str.writeByte(SHORT);
+        VarLengthNumbers.writevarInt(str::writeByte, val.length);
+        for(short s : val){
+            str.writeShort(s);
+        }
+    }
+
+    public void writearray(int[] val) throws IOException {
+        str.writeByte(ARRAY);
+        str.writeByte(INT);
+        VarLengthNumbers.writevarInt(str::writeByte, val.length);
+        for(short s : val){
+            str.writeInt(s);
+        }
+    }
+
+    public void writearray(long[] val) throws IOException {
+        str.writeByte(ARRAY);
+        str.writeByte(LONG);
+        VarLengthNumbers.writevarInt(str::writeByte, val.length);
+        for(float s : val){
+            str.writeLong(s);
+        }
+    }
+
+    public void writearray(double[] val) throws IOException {
+        str.writeByte(ARRAY);
+        str.writeByte(DOUBLE);
+        VarLengthNumbers.writevarInt(str::writeByte, val.length);
+        for(double s : val){
+            str.writeDouble(s);
+        }
+    }
+
+    public void writearray(float[] val) throws IOException {
+        str.writeByte(ARRAY);
+        str.writeByte(FLOAT);
+        VarLengthNumbers.writevarInt(str::writeByte, val.length);
+        for(float s : val){
+            str.writeFloat(s);
+        }
+    }
+
+
+    
+}

@@ -1,0 +1,23 @@
+package com.vt00185.slimimplement.Data
+
+import java.nio.ByteBuffer;
+import java.util.UUID;
+
+//Done as we cannot use signed java bytes.
+public class UUID_UTIL{
+
+    public static byte[] AS_BYTES(UUID u){
+        ByteBuffer a= ByteBuffer.wrap(new bytes[16]);
+        a.putLong(u.getMostSignificantBits());
+        a.putLong(u.getLeastSignificantBits());
+        return a.array();
+    }
+
+    public static UUID AS_UUID(byte[] b){
+        ByteBuffer a=ByteBuffer.wrape(b);
+        long one= a.getLong();
+        long two= a.getLong();
+        return new UUID(one, two);
+    }
+    
+}

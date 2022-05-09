@@ -1,0 +1,173 @@
+package com.vt00185.slimimplement.netw;
+import com.vt00185.slimimplement.Data.UUIDUTIL;
+import com.vt00185.slimimplement.Packet.datatypeID;
+import com.vt00185.slimimplement.Packet.magic;
+import com.vt00185.slimimplement.Packet.pack;
+import com.vt00185.slimimplement.Packet.packet;
+import com.vt00185.slimimplement.Data.VarLengthNumbers;
+import net.openhft.hashing.LongHashFunction;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
+public class packrec {
+    private static final Map<String, Chunk[]> ch = new HashMap<>();
+    private static boolean hasAllChunks(String snow){
+        return Arrays.stream(ch.get(snow)).noneMatch(Objects::isNull);
+    }
+
+    public static packet receivech(DatagramSocket sock)throws IOException{
+        byte[] datagrambuff=new byte[1024];
+        //Reading the datagram 
+        DatagramPacket datagram = new DatagramPacket(datagrambuff, datagrambuff.length);
+        sock.receive(datagram);
+
+        //getting the datagram sender
+        InetAddress ad= datagram.getAddress();
+        int port= datagram.getPort();
+        Chunk chnk= Chunk.from_Bytes(datagram.getData());
+        //ignore if received
+        if(!ch.containsKey(chnk.snowflake.toString())){
+            ch.put(chnk.snowflake.toString(), new Chunk[chnk.count]);
+        }
+        boolean wrchnk =false;
+        //Looking for an empty spot in the chnk array
+
+        if(Arrays.stream(ch.get(chnk.snowflake.toString())).anyMatch(packchunk -> packchunk != null && packchunk.index == chnk.index)){
+            return null;
+        }
+        if(chnk.count != ch.get(chnk.snowflake.toString()).length){
+            throw new AssertionError("Chunk Size invalid");
+        }
+
+        for (int i = 0; i < ch.get(chnk.snowflake.toString()).length; i++) {
+            if (ch.get(chnk.snowflake.toString())[i] == null) {
+                ch.get(chnk.snowflake.toString())[i] = chnk;
+                wrchnk = true;
+                break;
+            }
+        }
+        //count is wrong as there are no empty slots
+
+        if (!wrchnk){
+            throw new AssertionError("Inconsistent chunks");
+        }
+        //have not recieved chunks
+
+        if(!hasAllChunks(chnk.snowflake.toString())){
+            return null;
+        }
+
+        var pac= Arrays.stream(ch.get(chnk.snowflake.toString()))
+            .sorted(Comparator.comparingInt((Chunk val)->val.index)) //sorting chunks by index
+            .collect(Collectors.toList()); //Putting sorted chunks into a list
+        //removed from Map
+        ch.remove(chnk.snowflake.toString());
+        //Add lengths of chunk load to weight the packet
+        AtomicInteger totallen = new AtomicInteger();
+        pac.forEach((val)-> totallen.addAndGet(val.length));
+        ByteBuffer packbuff = ByteBuffer.allocate(totallen.get());
+        pac.forEach(packchunk-> packbuff.put(packchunk.data));
+        packbuff.flip(); // Packet buffer has been sealed
+
+        //packet header
+        if(packbuff.get()!= datatypeID.MAGIC || packbuff.getInt()!=magic.PACKET){
+            throw new AssertionError("Packet should begin with magic");
+        }
+        if (packbuff.get() != datatypeID.VAR_INT){
+            throw new AssertionError("Length of packet is invalid.");}
+        VarLengthNumbers.readvarInt(packuffer::get);
+
+        if (packbuff.get() != datatypeID.FIXED_BYTES){
+
+            throw new AssertionError("Packet snowflake invalid.");
+        }
+        byte[] snowflake = new byte[16];
+        packbuff.get(snowflake);
+
+        if(packbuff.get()!=datatypeID.VAR_INT){
+            throw new AssertionError("ID format for Packet is invalid");
+        }
+        int packetID = VarLengthNumbers.readvarInt(packbuff::get);
+
+        packet q=pack.getPacket(packetID);
+        if(q==null){
+            return null;
+        }
+        byte[] dt= new byte[packbuff.remaining()];
+        packbuff.get(dt);
+
+        //return packet after setting values
+        q.setsnowflake(snowflake);
+        q.readdata(new packet_input_stream(new ByteArrayInputStream(dt)));
+        return q;
+    }
+
+}
+
+class Chunk{
+    short len;
+    UUID ss;
+    long hh;
+    int ii;
+    int cnt;
+    byte[] dd;
+    private static final LongHashFunction h1= LongHashFunction.xx3();
+    static Chunk from_Bytes(byte[] b){
+        ByteBuffer buff= ByteBuffer.wrap(b);
+        if(buff.get()!= datatypeID.MAGIC || buff.getInt()!= magic.CHUNK){
+            throw new AssertionError("Chunk should start with a magic value");
+        }
+
+        if(buff.get()!=datatypeID.SHORT){
+            throw new AssertionError("Invalid format for Chunk Length");
+        }
+        short len=buff.getShort();
+
+        if(buff.get()!= datatypeID.FIXED_BYTES){
+            throw new AssertionError("Snowflake format invalid");
+        }
+        byte[] ss= new byte[16];
+        buff.get(ss);
+
+        if(buff.get()!= datatypeID.FIXED_BYTES){
+            throw new AssertionError("Chunk hash format invalid");
+        }
+        long hh=buff.getLong();
+
+        if(buff.get()!=datatypeID.INT){
+            throw new AssertionError("Index of Chunk format invalid");
+        }
+        int ii=buff.getInt();
+
+        if(buff.get()!=datatypeID.INT){
+            throw new AssertionError("Chunk's count is incorrect");
+        }
+        int cnt=buff.getInt();
+
+        byte[] dd=new byte[len];
+        buff.get(dd);
+
+        if(h1.hashBytes(dd)!= hh){
+            throw new AssertionError("Hash mismatch");
+        }
+
+        return new Chunk(len, ss, hh, ii, cnt, dd);
+    }
+
+    public Chunk(short len, byte[] ss, long hh, int ii, int cnt, byte[] dd){
+        this.len=len;
+        this.ss= UUIDUTIL.AS_UUID(ss);
+        this.hh=hh;
+        this.ii=ii;
+        this.cnt=cnt;
+        this.dd=dd;
+    }
+
+}

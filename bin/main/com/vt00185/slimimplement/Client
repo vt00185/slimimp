@@ -1,0 +1,55 @@
+package com.vt00185.slimimplement;
+
+import com.vt00185.slimimplement.netw.packrec;
+import com.vt00185.slimimplement.Packet.defaultpack;
+import com.vt00185.slimimplement.netw.packsend;
+import com.vt00185.slimimplement.Packet.packet;
+import java.io.IOException;
+import java.net.*;
+import java.util.Scanner;
+
+public class Client{
+    public static final String SERVER_HOST="system.bigbrainstuffs.com";
+    DatagramSocket clientsock;
+    public static void main(String[] args)throws IOException{
+        Client cl=new Client();
+        cl.connect();
+    }
+
+    public void connect()throws IOException{
+        Scanner sc= new Scanner(System.in);
+        try{
+            clientsock=new DatagramSocket();
+        }catch(Socket Exception e){
+            System.err.println("Initialisation failed."+"Check the port");
+            e.printStackTrace();
+        }
+        final InetAddress serverad;
+        try{
+            serverad=InetAddress.getByName(SERVER_HOST);
+        }catch(UnknownHostException e){
+            System.err.println("Host unknown"+SERVER_HOST);
+            e.printStackTrace();
+            return;
+        }
+        var listnerthr=new Thread(()->{
+            while(!clientsock.isClosed()){
+                try{
+                    packet pack;
+                    if(pack=packrec.receivech(clientsock))!=null{
+                        System.out.println(pack);
+                        System.out.println();
+                    }
+                }catch(IOException e){
+                    System.err.println("Err Receiving packages from server");
+                    e.printStackTrace();
+                }
+            }
+            System.out.println();
+            System.out.println("Disconnected");
+        });
+        listnerthr.start();
+        packet p=new  defaultpack("Just checking");
+        packsend.sendpack(p, clientsock,serverad, SLIM.PORT);
+    }
+}
